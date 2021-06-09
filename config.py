@@ -25,7 +25,9 @@ _C.DATA.DATA_PATH = ''
 # Dataset name
 _C.DATA.DATASET = 'imagenet'
 # Input image size
+#20210521, Justin
 _C.DATA.IMG_SIZE = 224
+#_C.DATA.IMG_SIZE = 128
 # Interpolation to resize image (random, bilinear, bicubic)
 _C.DATA.INTERPOLATION = 'bicubic'
 # Use zipped dataset instead of folder dataset
@@ -45,11 +47,17 @@ _C.MODEL = CN()
 # Model type
 _C.MODEL.TYPE = 'swin'
 # Model name
+# 20210512, Justin
 _C.MODEL.NAME = 'swin_tiny_patch4_window7_224'
+#_C.MODEL.NAME = 'swin_nano_patch4_window7_224'
 # Checkpoint to resume, could be overwritten by command line argument
 _C.MODEL.RESUME = ''
+#20210602, Justin
+_C.MODEL.RESUME2 = ''
 # Number of classes, overwritten in data preparation
-_C.MODEL.NUM_CLASSES = 1000
+#20210502, Justin
+#_C.MODEL.NUM_CLASSES = 1000
+_C.MODEL.NUM_CLASSES = 800
 # Dropout rate
 _C.MODEL.DROP_RATE = 0.0
 # Drop path rate
@@ -60,7 +68,9 @@ _C.MODEL.LABEL_SMOOTHING = 0.1
 # Swin Transformer parameters
 _C.MODEL.SWIN = CN()
 _C.MODEL.SWIN.PATCH_SIZE = 4
+# 20210514, Justin
 _C.MODEL.SWIN.IN_CHANS = 3
+#_C.MODEL.SWIN.IN_CHANS = 1
 _C.MODEL.SWIN.EMBED_DIM = 96
 _C.MODEL.SWIN.DEPTHS = [2, 2, 6, 2]
 _C.MODEL.SWIN.NUM_HEADS = [3, 6, 12, 24]
@@ -114,6 +124,7 @@ _C.TRAIN.OPTIMIZER.MOMENTUM = 0.9
 # -----------------------------------------------------------------------------
 # Augmentation settings
 # -----------------------------------------------------------------------------
+'''
 _C.AUG = CN()
 # Color jitter factor
 _C.AUG.COLOR_JITTER = 0.4
@@ -137,6 +148,34 @@ _C.AUG.MIXUP_PROB = 1.0
 _C.AUG.MIXUP_SWITCH_PROB = 0.5
 # How to apply mixup/cutmix params. Per "batch", "pair", or "elem"
 _C.AUG.MIXUP_MODE = 'batch'
+'''
+
+# 20210511, Justin
+_C.AUG = CN()
+# Color jitter factor
+_C.AUG.COLOR_JITTER = 0
+# Use AutoAugment policy. "v0" or "original"
+_C.AUG.AUTO_AUGMENT = None
+# Random erase prob
+_C.AUG.REPROB = 0
+# Random erase mode
+_C.AUG.REMODE = None
+# Random erase count
+_C.AUG.RECOUNT = 0
+# Mixup alpha, mixup enabled if > 0
+_C.AUG.MIXUP = 0
+# Cutmix alpha, cutmix enabled if > 0
+_C.AUG.CUTMIX = 0
+# Cutmix min/max ratio, overrides alpha and enables cutmix if set
+_C.AUG.CUTMIX_MINMAX = None
+# Probability of performing mixup or cutmix when either/both is enabled
+_C.AUG.MIXUP_PROB = 0
+# Probability of switching to cutmix when both mixup and cutmix enabled
+_C.AUG.MIXUP_SWITCH_PROB = 0
+# How to apply mixup/cutmix params. Per "batch", "pair", or "elem"
+_C.AUG.MIXUP_MODE = None
+
+
 
 # -----------------------------------------------------------------------------
 # Testing settings
@@ -185,6 +224,11 @@ def _update_config_from_file(config, cfg_file):
 
 
 def update_config(config, args):
+    print("***args***")
+    print(args)
+    print("***args***")
+    
+    
     _update_config_from_file(config, args.cfg)
 
     config.defrost()
@@ -202,6 +246,11 @@ def update_config(config, args):
         config.DATA.CACHE_MODE = args.cache_mode
     if args.resume:
         config.MODEL.RESUME = args.resume
+
+    # 20210601, Justin
+    if args.resume2:
+        config.MODEL.RESUME2 = args.resume2
+
     if args.accumulation_steps:
         config.TRAIN.ACCUMULATION_STEPS = args.accumulation_steps
     if args.use_checkpoint:

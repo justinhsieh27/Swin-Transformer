@@ -43,6 +43,22 @@ def load_checkpoint(config, model, optimizer, lr_scheduler, logger):
     return max_accuracy
 
 
+#20210602, Justin
+def load_checkpoint2(config, model, logger):
+    logger.info(f"==============> Resuming form {config.MODEL.RESUME2}....................")
+
+    checkpoint = torch.load(config.MODEL.RESUME2, map_location='cpu')
+    
+    msg = model.load_state_dict(checkpoint['model'], strict=False)
+    logger.info(msg)
+    max_accuracy = 0.0
+    
+    del checkpoint
+    torch.cuda.empty_cache()
+    return max_accuracy
+
+
+
 def save_checkpoint(config, epoch, model, max_accuracy, optimizer, lr_scheduler, logger):
     save_state = {'model': model.state_dict(),
                   'optimizer': optimizer.state_dict(),

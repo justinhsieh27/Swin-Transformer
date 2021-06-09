@@ -24,7 +24,23 @@ from data import build_loader
 from lr_scheduler import build_scheduler
 from optimizer import build_optimizer
 from logger import create_logger
-from utils import load_checkpoint, save_checkpoint, get_grad_norm, auto_resume_helper, reduce_tensor
+
+#20210602, Justin
+#from utils import load_checkpoint, save_checkpoint, get_grad_norm, auto_resume_helper, reduce_tensor
+from utils import load_checkpoint, load_checkpoint2, save_checkpoint, get_grad_norm, auto_resume_helper, reduce_tensor
+
+#20210522, Justin
+import heapq
+
+import PIL
+from PIL import Image
+import matplotlib.pyplot as plt
+from torchvision import datasets, transforms
+from IPython.display import display
+
+from os import listdir
+import shutil
+
 
 try:
     # noinspection PyUnresolvedReferences
@@ -52,6 +68,10 @@ def parse_option():
                              'full: cache all data, '
                              'part: sharding the dataset into nonoverlapping pieces and only cache one piece')
     parser.add_argument('--resume', help='resume from checkpoint')
+    
+    #20210601, Justin
+    parser.add_argument('--resume2', help='Inference test for resume from checkpoint')
+    
     parser.add_argument('--accumulation-steps', type=int, help="gradient accumulation steps")
     parser.add_argument('--use-checkpoint', action='store_true',
                         help="whether to use gradient checkpointing to save memory")
@@ -74,6 +94,11 @@ def parse_option():
 
 
 def main(config):
+    
+    print("***config***")
+    print(config)
+    print("***config***")
+    
     dataset_train, dataset_val, data_loader_train, data_loader_val, mixup_fn = build_loader(config)
 
     logger.info(f"Creating model:{config.MODEL.TYPE}/{config.MODEL.NAME}")
@@ -119,10 +144,27 @@ def main(config):
 
     if config.MODEL.RESUME:
         max_accuracy = load_checkpoint(config, model_without_ddp, optimizer, lr_scheduler, logger)
+        
+        #20210522, Justin
         acc1, acc5, loss = validate(config, data_loader_val, model)
+        #acc1, acc5, loss = validate(config, data_loader_val, model, dataset_val)
+        
         logger.info(f"Accuracy of the network on the {len(dataset_val)} test images: {acc1:.1f}%")
         if config.EVAL_MODE:
             return
+
+    # 20210601, Justin
+    if config.MODEL.RESUME2:
+        
+        max_accuracy = load_checkpoint2(config, model_without_ddp, logger)
+        validate2(config, data_loader_val, model, dataset_val, dataset_train)
+        
+        if config.EVAL_MODE:
+            return
+
+
+
+
 
     if config.THROUGHPUT_MODE:
         throughput(data_loader_val, model, logger)
@@ -228,6 +270,7 @@ def train_one_epoch(config, model, criterion, data_loader, optimizer, epoch, mix
     logger.info(f"EPOCH {epoch} training takes {datetime.timedelta(seconds=int(epoch_time))}")
 
 
+
 @torch.no_grad()
 def validate(config, data_loader, model):
     criterion = torch.nn.CrossEntropyLoss()
@@ -245,7 +288,7 @@ def validate(config, data_loader, model):
 
         # compute output
         output = model(images)
-
+        
         # measure accuracy and record loss
         loss = criterion(output, target)
         acc1, acc5 = accuracy(output, target, topk=(1, 5))
@@ -275,6 +318,115 @@ def validate(config, data_loader, model):
     return acc1_meter.avg, acc5_meter.avg, loss_meter.avg
 
 
+
+
+
+
+
+    
+    
+
+
+#20210602, Justin
+@torch.no_grad()
+def validate2(config, data_loader, model, dataset_val, dataset_train):
+    criterion = torch.nn.CrossEntropyLoss()
+    model.eval()
+
+    # 20210502, Justin
+    dicClass=dataset_train.class_to_idx
+    dicClass = {v: k for k, v in dicClass.items()} # reverse dic
+    print(dicClass)
+
+
+
+    #20210603, Justin
+    IMAGENET_DEFAULT_MEAN = (0.485, 0.456, 0.406)
+    IMAGENET_DEFAULT_STD = (0.229, 0.224, 0.225)
+
+    # loader使用torchvision中自带的transforms函数
+    loader = transforms.Compose([transforms.Resize((224, 224), interpolation=PIL.Image.BICUBIC), transforms.ToTensor(), transforms.Normalize(IMAGENET_DEFAULT_MEAN, IMAGENET_DEFAULT_STD)])  
+    unloader = transforms.ToPILImage()
+
+
+    '''
+    files = listdir("1st_word")
+    print(files)
+
+
+    for f in files:
+        tensorImage = Image.open("1st_word/" + f ).convert('RGB')
+        print(f)
+   
+        tensorImage = loader(tensorImage).unsqueeze(0)
+        tensorImage = tensorImage.to('cpu', torch.float)
+
+        #print(tensorImage.shape)
+        #print(tensorImage)
+
+        tensorImage = tensorImage.cuda(non_blocking=True)
+        #print(tensorImage)
+
+        # compute output
+        output = model(tensorImage)
+        
+        
+        #print(output.size())
+        lstResulByCls = []
+        for i in range(output.size()[1]):
+            lstResulByCls.append(output[0][i].data.tolist())
+        #print(lstResulByCls)
+        
+        lstTop5Index = list(map(lstResulByCls.index, heapq.nlargest(5, lstResulByCls)))
+        print(lstTop5Index)
+        
+        # list the top5 probability
+        for i in lstTop5Index:
+            print(dicClass[i] + ": " + str(lstResulByCls[i]))
+        
+        #print(dicClass[lstTop5Index[0]])
+        
+        Word = dicClass[lstTop5Index[0]]
+        
+        shutil.copy("1st_word/" + f , "1st_word/" + Word + '_' + f )
+                
+    '''
+
+
+    tensorImage = Image.open("4143_丁.jpg").convert('RGB')
+    print("4143_丁.jpg")
+   
+    tensorImage = loader(tensorImage).unsqueeze(0)
+    tensorImage = tensorImage.to('cpu', torch.float)
+
+    #print(tensorImage.shape)
+    #print(tensorImage)
+
+    tensorImage = tensorImage.cuda(non_blocking=True)
+    #print(tensorImage)
+
+    # compute output
+    output = model(tensorImage)
+        
+        
+    #print(output.size())
+    lstResulByCls = []
+    for i in range(output.size()[1]):
+        lstResulByCls.append(output[0][i].data.tolist())
+    #print(lstResulByCls)
+        
+    lstTop5Index = list(map(lstResulByCls.index, heapq.nlargest(5, lstResulByCls)))
+    print(lstTop5Index)
+        
+    # list the top5 probability
+    for i in lstTop5Index:
+        print(dicClass[i] + ": " + str(lstResulByCls[i]))
+        
+    
+
+
+    
+
 @torch.no_grad()
 def throughput(data_loader, model, logger):
     model.eval()
@@ -298,6 +450,11 @@ def throughput(data_loader, model, logger):
 if __name__ == '__main__':
     _, config = parse_option()
 
+    #20210607, Justin
+    print('***os.environ***')    
+    print(os.environ)
+    print('***os.environ***')    
+    
     if config.AMP_OPT_LEVEL != "O0":
         assert amp is not None, "amp not installed!"
 
@@ -308,6 +465,7 @@ if __name__ == '__main__':
     else:
         rank = -1
         world_size = -1
+    
     torch.cuda.set_device(config.LOCAL_RANK)
     torch.distributed.init_process_group(backend='nccl', init_method='env://', world_size=world_size, rank=rank)
     torch.distributed.barrier()
